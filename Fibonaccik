@@ -1,0 +1,105 @@
+KUBERNETS
+app.py
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return jsonify({"message": "Welcome to the Flask API!"})
+
+@app.route('/api/hello', methods=['GET'])
+def hello():
+    return jsonify({"message": "Hello, World!"})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+
+Dockerfile
+# Base image
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy application files
+COPY app.py /app/
+
+# Install dependencies
+RUN pip install flask
+
+# Expose the application port
+EXPOSE 5000
+
+# Run the Flask app
+CMD ["python", "app.py"]
+
+Deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-api
+  template:
+    metadata:
+      labels:
+        app: flask-api
+    spec:
+      imagePullSecrets:
+      - name: key  # Reference your secret here
+      containers:
+      - name: flask-api
+        image: <docker_username>/flask-api:latest  # Ensure the image name is correct
+        ports:
+        - containerPort: 5000
+
+service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-api-service
+spec:
+  type: NodePort
+  selector:
+    app: my-api
+  ports:
+    - port: 80
+      targetPort: 5000  # assuming your API listens on port 5000
+      protocol: TCP
+      nodePort: 30007    # you can specify a port or let Kubernetes allocate one
+
+In cmd navigate to the directory:
+# Build the Docker image
+docker build -t <docker_username>/flask-api:latest .
+
+# Log in to Docker Hub
+docker login
+
+# Push the image to Docker Hub
+docker push <docker_username>/flask-api:latest
+
+open docker desktop
+select settings
+select kubernets
+enable kubernets
+click apply and restart
+
+In cmd navigate to the directory: 
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+
+After this, you can check the deployment and service status:
+kubectl get deployments  
+kubectl get services  
+
+kubectl create secret docker-registry key --docker-server=registry.hub.docker.com --docker-username=<youruser_id> --docker-password=<your-password> --docker-email=<email>
+
+for password: go to docker website,sign in, forgot password
+
+kubectl port-forward service/flask-api-service 5000:5000
+while this is running,open browser
+http://localhost:5000
